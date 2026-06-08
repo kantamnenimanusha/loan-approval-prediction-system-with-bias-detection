@@ -1,0 +1,546 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>🏦 Loan Approval Predictor</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --primary: #1565C0;
+      --primary-light: #1976D2;
+      --primary-dark: #0D47A1;
+      --accent: #0288D1;
+      --success: #2E7D32;
+      --success-bg: #E8F5E9;
+      --danger: #C62828;
+      --danger-bg: #FFEBEE;
+      --warning: #E65100;
+      --warning-bg: #FFF3E0;
+      --bg: #EEF2F7;
+      --card: #FFFFFF;
+      --border: #CFD8DC;
+      --text: #263238;
+      --muted: #607D8B;
+      --shadow: 0 4px 20px rgba(0,0,0,0.10);
+      --radius: 14px;
+    }
+
+    body {
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      padding: 20px;
+    }
+
+    header {
+      background: linear-gradient(135deg, var(--primary-dark), var(--primary-light));
+      color: white;
+      border-radius: var(--radius);
+      padding: 32px 40px;
+      margin-bottom: 24px;
+      box-shadow: var(--shadow);
+      display: flex;
+      align-items: center;
+      gap: 20px;
+    }
+    header .icon { font-size: 52px; }
+    header h1 { font-size: 28px; font-weight: 700; }
+    header p  { font-size: 14px; opacity: 0.85; margin-top: 4px; }
+
+    .layout { display: grid; grid-template-columns: 1fr 380px; gap: 24px; max-width: 1100px; margin: 0 auto; }
+
+    .card {
+      background: var(--card);
+      border-radius: var(--radius);
+      padding: 28px 32px;
+      box-shadow: var(--shadow);
+    }
+
+    .section-title {
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--primary);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 18px;
+      padding-bottom: 10px;
+      border-bottom: 2px solid var(--border);
+    }
+
+    .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+
+    .form-group { display: flex; flex-direction: column; gap: 6px; }
+    .form-group.full { grid-column: 1 / -1; }
+
+    label {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.4px;
+    }
+
+    input[type="number"], select {
+      padding: 11px 14px;
+      border: 1.5px solid var(--border);
+      border-radius: 8px;
+      font-size: 15px;
+      color: var(--text);
+      transition: border-color 0.2s, box-shadow 0.2s;
+      background: #FAFAFA;
+      width: 100%;
+    }
+    input[type="number"]:focus, select:focus {
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(21,101,192,0.12);
+      background: white;
+    }
+
+    .radio-group { display: flex; gap: 10px; flex-wrap: wrap; }
+    .radio-group input[type="radio"] { display: none; }
+    .radio-group label {
+      padding: 8px 16px;
+      border: 1.5px solid var(--border);
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--muted);
+      transition: all 0.2s;
+      text-transform: none;
+      letter-spacing: 0;
+    }
+    .radio-group input[type="radio"]:checked + label {
+      border-color: var(--primary);
+      background: var(--primary);
+      color: white;
+    }
+
+    .submit-btn {
+      width: 100%;
+      padding: 15px;
+      margin-top: 24px;
+      background: linear-gradient(135deg, var(--primary), var(--accent));
+      color: white;
+      border: none;
+      border-radius: 10px;
+      font-size: 16px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: opacity 0.2s, transform 0.1s;
+      letter-spacing: 0.5px;
+    }
+    .submit-btn:hover { opacity: 0.92; }
+    .submit-btn:active { transform: scale(0.99); }
+    .submit-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+
+    /* Result panel */
+    #result-panel { display: none; }
+
+    .result-badge {
+      text-align: center;
+      padding: 28px 20px 20px;
+      border-radius: 12px;
+      margin-bottom: 20px;
+    }
+    .result-badge.approved { background: var(--success-bg); }
+    .result-badge.rejected { background: var(--danger-bg); }
+
+    .result-icon { font-size: 52px; }
+    .result-status {
+      font-size: 26px;
+      font-weight: 800;
+      margin: 8px 0 4px;
+    }
+    .result-badge.approved .result-status { color: var(--success); }
+    .result-badge.rejected .result-status { color: var(--danger); }
+
+    .confidence-bar-wrap { margin: 16px 0; }
+    .confidence-label { display: flex; justify-content: space-between; font-size: 13px; color: var(--muted); margin-bottom: 6px; }
+    .confidence-bar {
+      height: 10px;
+      background: var(--border);
+      border-radius: 99px;
+      overflow: hidden;
+    }
+    .confidence-fill {
+      height: 100%;
+      border-radius: 99px;
+      transition: width 0.8s ease;
+    }
+    .approved .confidence-fill { background: linear-gradient(90deg, #43A047, #66BB6A); }
+    .rejected .confidence-fill { background: linear-gradient(90deg, #EF5350, #E53935); }
+
+    .risk-badge {
+      display: inline-block;
+      padding: 4px 14px;
+      border-radius: 99px;
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+      margin-top: 6px;
+    }
+    .risk-LOW    { background: #C8E6C9; color: #1B5E20; }
+    .risk-MEDIUM { background: #FFE0B2; color: #E65100; }
+    .risk-HIGH   { background: #FFCDD2; color: #B71C1C; }
+
+    .result-message {
+      font-size: 14px;
+      line-height: 1.6;
+      color: var(--muted);
+      margin: 16px 0;
+      padding: 14px;
+      background: #F5F5F5;
+      border-radius: 10px;
+    }
+
+    /* Stats */
+    .stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 20px; }
+    .stat-card {
+      background: var(--bg);
+      border-radius: 10px;
+      padding: 16px;
+      text-align: center;
+    }
+    .stat-value { font-size: 26px; font-weight: 800; color: var(--primary); }
+    .stat-label { font-size: 12px; color: var(--muted); margin-top: 2px; font-weight: 600; }
+
+    /* History */
+    .history-list { margin-top: 24px; }
+    .history-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 10px 14px;
+      border-radius: 8px;
+      margin-bottom: 8px;
+      background: var(--bg);
+      font-size: 13px;
+    }
+    .history-item .h-label { color: var(--muted); }
+    .history-item .h-status {
+      font-weight: 700;
+      padding: 3px 10px;
+      border-radius: 99px;
+      font-size: 12px;
+    }
+    .h-status.approved { background: var(--success-bg); color: var(--success); }
+    .h-status.rejected { background: var(--danger-bg); color: var(--danger); }
+
+    .spinner {
+      width: 22px; height: 22px;
+      border: 3px solid rgba(255,255,255,0.3);
+      border-top-color: white;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      display: inline-block;
+      vertical-align: middle;
+      margin-right: 8px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .error-msg {
+      color: var(--danger);
+      font-size: 13px;
+      margin-top: 10px;
+      padding: 10px;
+      background: var(--danger-bg);
+      border-radius: 8px;
+      display: none;
+    }
+
+    @media (max-width: 800px) {
+      .layout { grid-template-columns: 1fr; }
+      .form-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<div style="max-width:1100px;margin:0 auto;">
+  <header>
+    <div class="icon">🏦</div>
+    <div>
+      <h1>Loan Approval Predictor</h1>
+      <p>AI-powered loan eligibility assessment based on applicant details</p>
+    </div>
+  </header>
+
+  <div class="layout">
+    <!-- FORM -->
+    <div class="card">
+      <div class="section-title">Applicant Details</div>
+      <form id="loan-form">
+        <div class="form-grid">
+
+          <!-- Gender -->
+          <div class="form-group">
+            <label>Gender</label>
+            <div class="radio-group">
+              <input type="radio" name="gender" id="g-male" value="1" checked>
+              <label for="g-male">Male</label>
+              <input type="radio" name="gender" id="g-female" value="0">
+              <label for="g-female">Female</label>
+            </div>
+          </div>
+
+          <!-- Dependents -->
+          <div class="form-group">
+            <label>Dependents</label>
+            <div class="radio-group">
+              <input type="radio" name="dependents" id="d0" value="0" checked>
+              <label for="d0">0</label>
+              <input type="radio" name="dependents" id="d1" value="1">
+              <label for="d1">1</label>
+              <input type="radio" name="dependents" id="d2" value="2">
+              <label for="d2">2</label>
+              <input type="radio" name="dependents" id="d3" value="3">
+              <label for="d3">3+</label>
+            </div>
+          </div>
+
+          <!-- Applicant Income -->
+          <div class="form-group">
+            <label>Applicant Income (₹/month)</label>
+            <input type="number" id="applicantIncome" placeholder="e.g. 5000" min="0" required>
+          </div>
+
+          <!-- Coapplicant Income -->
+          <div class="form-group">
+            <label>Co-applicant Income (₹/month)</label>
+            <input type="number" id="coapplicantIncome" placeholder="e.g. 2000" min="0" value="0" required>
+          </div>
+
+          <!-- Loan Amount -->
+          <div class="form-group">
+            <label>Loan Amount (₹ thousands)</label>
+            <input type="number" id="loanAmount" placeholder="e.g. 150" min="1" required>
+          </div>
+
+          <!-- Loan Term -->
+          <div class="form-group">
+            <label>Loan Term (months)</label>
+            <select id="loanAmountTerm">
+              <option value="360" selected>360 months (30 yr)</option>
+              <option value="300">300 months (25 yr)</option>
+              <option value="240">240 months (20 yr)</option>
+              <option value="180">180 months (15 yr)</option>
+              <option value="120">120 months (10 yr)</option>
+              <option value="84">84 months (7 yr)</option>
+              <option value="60">60 months (5 yr)</option>
+              <option value="36">36 months (3 yr)</option>
+              <option value="12">12 months (1 yr)</option>
+            </select>
+          </div>
+
+          <!-- Credit History -->
+          <div class="form-group">
+            <label>Credit History</label>
+            <div class="radio-group">
+              <input type="radio" name="creditHistory" id="ch-yes" value="1" checked>
+              <label for="ch-yes">Good ✓</label>
+              <input type="radio" name="creditHistory" id="ch-no" value="0">
+              <label for="ch-no">Bad ✗</label>
+            </div>
+          </div>
+
+          <!-- Property Area -->
+          <div class="form-group">
+            <label>Property Area</label>
+            <div class="radio-group">
+              <input type="radio" name="propertyArea" id="pa-semi" value="2" checked>
+              <label for="pa-semi">Semiurban</label>
+              <input type="radio" name="propertyArea" id="pa-urban" value="1">
+              <label for="pa-urban">Urban</label>
+              <input type="radio" name="propertyArea" id="pa-rural" value="0">
+              <label for="pa-rural">Rural</label>
+            </div>
+          </div>
+
+        </div>
+
+        <div class="error-msg" id="error-msg"></div>
+        <button type="submit" class="submit-btn" id="submit-btn">
+          Predict Loan Status
+        </button>
+      </form>
+    </div>
+
+    <!-- SIDEBAR -->
+    <div>
+      <!-- Result -->
+      <div class="card" id="result-panel">
+        <div class="section-title">Prediction Result</div>
+        <div class="result-badge" id="result-badge">
+          <div class="result-icon" id="result-icon"></div>
+          <div class="result-status" id="result-status"></div>
+          <span class="risk-badge" id="risk-badge"></span>
+        </div>
+        <div class="confidence-bar-wrap">
+          <div class="confidence-label">
+            <span>Confidence</span>
+            <span id="confidence-text"></span>
+          </div>
+          <div class="confidence-bar">
+            <div class="confidence-fill" id="confidence-fill" style="width:0%"></div>
+          </div>
+        </div>
+        <p class="result-message" id="result-message"></p>
+      </div>
+
+      <!-- Stats -->
+      <div class="card" style="margin-top:20px;">
+        <div class="section-title">Session Statistics</div>
+        <div class="stats-grid">
+          <div class="stat-card">
+            <div class="stat-value" id="stat-total">—</div>
+            <div class="stat-label">Total Predictions</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-value" id="stat-rate">—</div>
+            <div class="stat-label">Approval Rate</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-value" id="stat-approved" style="color:#2E7D32">—</div>
+            <div class="stat-label">Approved</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-value" id="stat-rejected" style="color:#C62828">—</div>
+            <div class="stat-label">Rejected</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- History -->
+      <div class="card" style="margin-top:20px;">
+        <div class="section-title">Recent Predictions</div>
+        <div class="history-list" id="history-list">
+          <p style="color:var(--muted);font-size:13px;text-align:center;padding:10px 0;">
+            No predictions yet. Submit a form to begin.
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  const API = 'http://localhost:8080/api/loan';
+
+  const form = document.getElementById('loan-form');
+  const btn  = document.getElementById('submit-btn');
+  const errEl= document.getElementById('error-msg');
+
+  function showError(msg) {
+    errEl.textContent = msg;
+    errEl.style.display = 'block';
+  }
+  function clearError() { errEl.style.display = 'none'; }
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    clearError();
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner"></span> Predicting...';
+
+    const payload = {
+      gender:           parseInt(document.querySelector('input[name="gender"]:checked').value),
+      dependents:       parseInt(document.querySelector('input[name="dependents"]:checked').value),
+      applicantIncome:  parseFloat(document.getElementById('applicantIncome').value),
+      coapplicantIncome:parseFloat(document.getElementById('coapplicantIncome').value),
+      loanAmount:       parseFloat(document.getElementById('loanAmount').value),
+      loanAmountTerm:   parseFloat(document.getElementById('loanAmountTerm').value),
+      creditHistory:    parseFloat(document.querySelector('input[name="creditHistory"]:checked').value),
+      propertyArea:     parseInt(document.querySelector('input[name="propertyArea"]:checked').value),
+    };
+
+    try {
+      const res = await fetch(`${API}/predict`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.message || `Server error: ${res.status}`);
+      }
+
+      const data = await res.json();
+      showResult(data);
+      await loadStats();
+      await loadHistory();
+    } catch (err) {
+      showError('⚠️ ' + (err.message || 'Could not reach the backend. Make sure the Spring Boot server is running on port 8080.'));
+    } finally {
+      btn.disabled = false;
+      btn.innerHTML = 'Predict Loan Status';
+    }
+  });
+
+  function showResult(data) {
+    const panel  = document.getElementById('result-panel');
+    const badge  = document.getElementById('result-badge');
+    const icon   = document.getElementById('result-icon');
+    const status = document.getElementById('result-status');
+    const risk   = document.getElementById('risk-badge');
+    const fill   = document.getElementById('confidence-fill');
+    const confTx = document.getElementById('confidence-text');
+    const msgEl  = document.getElementById('result-message');
+
+    panel.style.display = 'block';
+    badge.className = 'result-badge ' + (data.approved ? 'approved' : 'rejected');
+    icon.textContent  = data.approved ? '✅' : '❌';
+    status.textContent= data.approved ? 'Loan Approved' : 'Loan Rejected';
+    risk.textContent  = data.riskLevel + ' RISK';
+    risk.className    = `risk-badge risk-${data.riskLevel}`;
+    confTx.textContent= data.confidence + '%';
+    msgEl.textContent = data.message;
+
+    // Animate confidence bar
+    setTimeout(() => { fill.style.width = data.confidence + '%'; }, 50);
+    fill.className = 'confidence-fill';
+  }
+
+  async function loadStats() {
+    try {
+      const res = await fetch(`${API}/stats`);
+      if (!res.ok) return;
+      const s = await res.json();
+      document.getElementById('stat-total').textContent    = s.total;
+      document.getElementById('stat-rate').textContent     = s.approvalRate + '%';
+      document.getElementById('stat-approved').textContent = s.approved;
+      document.getElementById('stat-rejected').textContent = s.rejected;
+    } catch (_) {}
+  }
+
+  async function loadHistory() {
+    try {
+      const res = await fetch(`${API}/history`);
+      if (!res.ok) return;
+      const list = await res.json();
+      const container = document.getElementById('history-list');
+
+      if (!list.length) return;
+      container.innerHTML = list.map((a, i) => `
+        <div class="history-item">
+          <div>
+            <div style="font-weight:600;">#${list.length - i} &nbsp; ₹${a.loanAmount}K</div>
+            <div class="h-label">Income ₹${a.applicantIncome.toLocaleString()} &middot; ${a.confidence}% confidence</div>
+          </div>
+          <span class="h-status ${a.approved ? 'approved' : 'rejected'}">${a.status}</span>
+        </div>
+      `).join('');
+    } catch (_) {}
+  }
+
+  // Load stats on page load (if server is already running)
+  loadStats();
+  loadHistory();
+</script>
+</body>
+</html>
